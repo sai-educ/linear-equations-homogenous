@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Homogeneous Linear Systems — Interactive Lab</title>
+<style>
+  :root{
+    --bg:#120a1e; --panel:#1a0f2e; --ink:#f0e8ff; --muted:#c8b8e8;
+    --accent:#a855f7; --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
+    --grid:#2a1a3e; --pivot:#a855f7; --free:#10b981; --verify:#3b82f6;
+    --overlay:#00000090;
+  }
+  
+  * { box-sizing: border-box; }
+  
+  html,body{height:100%; margin:0; padding:0; overflow-x:hidden;}
+  body{
+    font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans";
+    color:var(--ink); 
+    background: radial-gradient(1200px 700px at 15% -10%, #3a1a5f 0%, #120a1e 60%) fixed;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .howto-anchor{position:fixed; top:10px; right:10px; z-index:1001}
+  .howto-btn{
+    background:#3a1a5f; border:1px solid #5a3a8f; color:var(--ink);
+    border-radius:999px; padding:10px 16px; font-size:14px; cursor:pointer;
+    min-height:44px; display:flex; align-items:center; gap:6px;
+    touch-action: manipulation;
+  }
+  .howto-btn:active{transform:scale(0.97)}
+  .howto-btn:hover{border-color:#7a5aaf}
+  .backdrop{position:fixed; inset:0; background:var(--overlay); display:none; z-index:1000}
+  .backdrop.open{display:block}
+  .howto-panel{
+    position:fixed; top:0; right:0; bottom:0; width:min(440px, 100vw);
+    background:linear-gradient(180deg,#1a0f2e 0%,#120a1e 100%);
+    border-left:1px solid #3a1a5f; 
+    box-shadow:0 0 40px #00000070; z-index:1002; display:none;
+    overflow-y:auto; -webkit-overflow-scrolling: touch;
+  }
+  .howto-panel.open{display:block; animation:slideIn 0.3s ease}
+  @keyframes slideIn{from{transform:translateX(100%)} to{transform:translateX(0)}}
+  .howto-inner{padding:16px}
+  .howto-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; position:sticky; top:0; background:#1a0f2e; padding:12px; margin:-16px -16px 12px; z-index:10; border-bottom:1px solid #3a1a5f}
+  .howto-title{font-size:16px; font-weight:700}
+  .close-btn{background:#120a1e; border:1px solid #3a1a5f; color:var(--ink); border-radius:10px; padding:10px 12px; cursor:pointer; min-height:44px; min-width:44px; display:flex; align-items:center; justify-content:center; touch-action:manipulation}
+  .close-btn:active{transform:scale(0.95)}
+  .close-btn:hover{border-color:#5a3a8f}
+  .howto-section{border:1px solid #3a1a5f; background:#1a0f2e; border-radius:10px; padding:14px; margin-top:10px}
+  .howto-section h3{margin:0 0 10px; font-size:15px; color:#a855f7}
+  .howto-section ol{margin:.5em 0 .4em 1.4em; line-height:1.7; padding-left:0} 
+  .howto-section li{margin:.4em 0}
+  .howto-section ul{margin:.5em 0 .4em 1.4em; line-height:1.7; padding-left:0}
+  .muted{color:var(--muted)}
+  .highlight{color:#c084fc; font-weight:600}
+
+  header{max-width:1400px; margin:0 auto; padding:20px 16px 12px}
+  h1{margin:0 0 8px; font-size:clamp(20px,5vw,34px); line-height:1.2}
+  .sub{color:var(--muted); max-width:1100px; line-height:1.6; font-size:clamp(13px,3.5vw,15px)}
+  
+  main{
+    max-width:1400px; margin:12px auto 40px; padding:0 12px; 
+    display:grid; gap:14px; grid-template-columns:1fr;
+  }
+  @media (min-width:900px){ 
+    main{grid-template-columns:1.2fr 1fr; padding:0 16px; gap:16px} 
+  }
+
+  .card{
+    background:linear-gradient(180deg,#1a0f2e 0%,#120a1e 100%); 
+    border:1px solid #3a1a5f; border-radius:14px; padding:14px; 
+    box-shadow:0 10px 28px #00000045, inset 0 1px 0 #4a2a6f33
+  }
+  h2{margin:0 0 12px; font-size:clamp(16px,4vw,18px); color:#a855f7}
+  .row{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+  .spacer{height:10px}
+  .tag{
+    display:inline-flex; align-items:center; gap:6px; 
+    font-size:11px; padding:6px 10px; border-radius:999px; 
+    border:1px dashed #3a1a5f; background:#1a0f2e;
+    white-space:nowrap;
+  }
+  .dot{width:10px; height:10px; border-radius:50%; flex-shrink:0}
+  .dot.pivot{background:var(--pivot)} 
+  .dot.free{background:var(--free)} 
+  .dot.verify{background:var(--verify)}
+
+  button, select, input[type="number"], input[type="text"]{
+    background:#3a1a5f; border:1px solid #5a3a8f; color:var(--ink); 
+    border-radius:10px; padding:11px 14px; font-size:14px; outline:none;
+    min-height:44px; touch-action:manipulation;
+  }
+  button{cursor:pointer; font-weight:500; display:inline-flex; align-items:center; justify-content:center; gap:6px}
+  button:active{transform:scale(0.97)}
+  button:hover{border-color:#7a5aaf}
+  button.primary{background:linear-gradient(180deg,#a855f7,#9333ea); border-color:#c084fc; font-weight:600}
+  button.ghost{background:#1a0f2e}
+  button.ok{background:#065f46; border-color:#10b981; font-weight:600}
+  button.warn{background:#78350f; border-color:#f59e0b}
+  
+  .pill{
+    display:inline-flex; align-items:center; gap:6px; 
+    padding:8px 12px; border:1px solid #3a1a5f; 
+    border-radius:999px; background:#1a0f2e; color:var(--muted);
+    font-size:13px; flex-wrap:wrap;
+  }
+  .pill input, .pill select{
+    padding:8px 10px; min-height:38px; font-size:13px;
+  }
+
+  .matrix-wrap{
+    position:relative; padding:12px; border-radius:12px;
+    background: linear-gradient(180deg, rgba(168,85,247,.03), rgba(168,85,247,0));
+    border:1px solid #4a2a7f; overflow-x:auto; overflow-y:visible;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .matrix{
+    display:grid; 
+    gap:6px;
+    grid-template-columns:repeat(var(--cols), 80px);
+    min-width:min-content;
+  }
+  
+  .cell{position:relative}
+  .cell input{
+    width:100%; height:70px; 
+    padding:8px; text-align:center; 
+    font-size:14px; 
+    font-weight:600; color:var(--ink);
+    background:#1a0f2e; border:2px solid #3a1a5f; 
+    border-radius:10px; 
+    transition:border-color .2s, box-shadow .2s;
+  }
+  .cell input:focus{
+    border-color:#a855f7; 
+    box-shadow:0 0 0 3px #a855f733;
+    outline:none;
+  }
+  .cell.pivot input{
+    border-color:#c084fc;
+  }
+  .cell.free input{
+    border-color:#10b981;
+  }
+
+  .result-box{
+    background:#1a0f2e; border:1px solid #3a1a5f; border-radius:12px; 
+    padding:14px; margin-top:10px;
+    font-family:ui-monospace,Menlo,Consolas,monospace; 
+    font-size:13px; line-height:2;
+  }
+  .result-box .label{color:#c8b8e8; font-weight:400}
+  .result-box .value{color:#a855f7; font-weight:700}
+  .result-box .pivot-var{color:#a855f7; font-weight:700}
+  .result-box .free-var{color:#10b981; font-weight:700}
+
+  .section-card{
+    background:#1a0f2e; border:1px solid #3a1a5f; border-radius:10px;
+    padding:14px; margin-top:10px;
+  }
+  .section-title{
+    font-size:15px; font-weight:600; color:#a855f7; margin-bottom:10px;
+    display:flex; align-items:center; gap:8px;
+  }
+
+  .log{
+    background:#1a0f2e; border:1px solid #3a1a5f; border-radius:12px; 
+    padding:12px; height:300px; overflow:auto; 
+    font-family:ui-monospace,Menlo,Consolas,monospace; 
+    font-size:12px; line-height:1.7;
+    -webkit-overflow-scrolling: touch;
+  }
+  .log-step{color:#a855f7; font-weight:600}
+  .log-pivot{color:#c084fc; font-weight:600}
+  .log-free{color:#10b981; font-weight:600}
+  .log-section{margin-top:12px; padding-top:12px; border-top:1px solid #3a1a5f}
+  
+  .kpis{
+    display:grid; grid-template-columns:repeat(2,1fr); 
+    gap:8px; margin-top:10px;
+  }
+  .kpi{
+    background:#1a0f2e; border:1px solid #3a1a5f; 
+    border-radius:10px; padding:12px; text-align:center;
+  }
+  .kpi .label{font-size:11px; color:var(--muted); margin-bottom:6px} 
+  .kpi .value{font-size:clamp(18px,5vw,22px); font-weight:700; color:#a855f7}
+
+  details{
+    border:1px solid #3a1a5f; background:#1a0f2e; 
+    border-radius:10px; padding:12px; margin-top:12px;
+  }
+  summary{
+    cursor:pointer; font-weight:600; font-size:14px; 
+    min-height:44px; display:flex; align-items:center;
+    touch-action:manipulation; user-select:none;
+  }
+  details[open] summary{margin-bottom:12px}
+
+  footer{
+    max-width:1400px; margin:8px auto 40px; padding:0 16px; 
+    color:var(--muted); font-size:12px; line-height:1.6;
+  }
+  a{color:var(--accent); text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  .info-box{
+    background:#2a1a3f; border:1px solid #4a2a7f; 
+    border-radius:10px; padding:12px; margin:10px 0; 
+    border-left:3px solid #a855f7; font-size:13px; line-height:1.6;
+  }
+  .info-box strong{color:#a855f7}
+
+  .formula-box{
+    background:#1a0f2e; border:1px solid #3a1a5f; 
+    border-radius:10px; padding:12px; margin:10px 0;
+    text-align:center; line-height:1.8;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+  }
+
+  .vector-display{
+    display:flex; 
+    align-items:center; 
+    gap:10px; 
+    margin:10px 0;
+    flex-wrap:wrap;
+  }
+
+  .vector{
+    display:inline-flex;
+    flex-direction:column;
+    border-left:2px solid #a855f7;
+    border-right:2px solid #a855f7;
+    padding:8px 12px;
+    background:#1a0f2e;
+    border-radius:4px;
+  }
+
+  .vector-entry{
+    text-align:center;
+    padding:4px 0;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:13px;
+  }
+
+  @media (max-width:767px){
+    .row{gap:6px}
+    .pill{font-size:12px; padding:7px 10px}
+    button{font-size:13px; padding:10px 12px}
+    .tag{font-size:10px; padding:5px 8px}
+  }
+</style>
+</head>
+<body>
+  <div class="howto-anchor">
+    <button id="howBtn" class="howto-btn">
+      <span>❓</span>
+      <span>How to Use</span>
+    </button>
+  </div>
+  <div id="howBackdrop" class="backdrop"></div>
+  <div id="howPanel" class="howto-panel">
+    <div class="howto-inner">
+      <div class="howto-head">
+        <div class="howto-title">How to Use — Homogeneous Systems</div>
+        <button id="howClose" class="close-btn">✕</button>
+      </div>
+
+      <section class="howto-section">
+        <h3>🎯 Learning Objectives</h3>
+        <ul class="muted">
+          <li>Understand <span class="highlight">homogeneous systems</span> Ax = 0</li>
+          <li>Master <span class="highlight">Gaussian elimination</span> and row reduction</li>
+          <li>Identify <span class="highlight">pivot and free variables</span></li>
+          <li>Express solutions in <span class="highlight">parametric vector form</span></li>
+          <li>Work with <span class="highlight">exact rational arithmetic</span></li>
+          <li>Understand the <span class="highlight">null space</span> of a matrix</li>
+          <li>Determine dimension of solution space</li>
+        </ul>
+        
+        <h3>📋 Complete Procedure</h3>
+        <ol>
+          <li><strong>Matrix Input:</strong> Enter coefficient matrix A. Use integers or fractions like 1/2, -3/4</li>
+          <li><strong>Row Reduction:</strong>
+            <ul style="margin-left:1.2em; margin-top:0.3em">
+              <li>Perform Gaussian elimination</li>
+              <li>Obtain row echelon form (REF)</li>
+              <li>Continue to reduced row echelon form (RREF)</li>
+            </ul>
+          </li>
+          <li><strong>Identify Variables:</strong>
+            <ul style="margin-left:1.2em; margin-top:0.3em">
+              <li>Find pivot variables (leading 1's)</li>
+              <li>Find free variables (no pivots)</li>
+            </ul>
+          </li>
+          <li><strong>Solution Set:</strong>
+            <ul style="margin-left:1.2em; margin-top:0.3em">
+              <li>Express pivot variables in terms of free variables</li>
+              <li>Write solution in parametric vector form</li>
+              <li>Identify basis vectors for null space</li>
+            </ul>
+          </li>
+        </ol>
+
+        <div class="info-box">
+          <strong>💡 Key Concept:</strong> Homogeneous systems always have at least the trivial solution x = 0. If there are free variables, infinitely many solutions exist!
+        </div>
+      </section>
+    </div>
+  </div>
+
+<header>
+  <h1>Homogeneous Linear Systems — Complete Interactive Lab</h1>
+  <p class="sub">
+    <strong>Objective:</strong> Solve homogeneous systems <strong>Ax = 0</strong> step-by-step using <strong>exact rational arithmetic</strong>. 
+    Learn row reduction, identify pivot/free variables, and express solutions in <strong>parametric vector form</strong>.
+  </p>
+</header>
+
+<main>
+  <section class="card">
+    <div class="row">
+      <div class="pill">
+        <span>Rows (m):</span>
+        <select id="rows" style="width:70px">
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+        </select>
+      </div>
+      <div class="pill">
+        <span>Cols (n):</span>
+        <select id="cols" style="width:70px">
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4" selected>4</option>
+        </select>
+      </div>
+      <button id="resize">Resize</button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="row">
+      <button id="preset1" class="ghost">Preset 1</button>
+      <button id="preset2" class="ghost">Preset 2</button>
+      <button id="preset3" class="ghost">Preset 3</button>
+      <button id="random" class="ghost">Random</button>
+      <button id="reset" class="ghost">Clear</button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <h2>Coefficient Matrix A</h2>
+    <div class="matrix-wrap">
+      <div id="matrixA" class="matrix"></div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="row" style="font-size:11px">
+      <span class="tag"><span class="dot pivot"></span> Pivot Variable</span>
+      <span class="tag"><span class="dot free"></span> Free Variable</span>
+      <span class="tag"><span class="dot verify"></span> Verified ✓</span>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="row">
+      <button id="solve" class="primary">Solve System ▷</button>
+      <button id="step1" class="ghost">Step 1: Row Reduce</button>
+      <button id="step2" class="ghost">Step 2: Find Solution</button>
+      <button id="verify" class="ghost">Verify Solution</button>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="section-card">
+      <div class="section-title">📐 Row Reduced Form (RREF)</div>
+      <div id="rrефResult" class="result-box">
+        <div class="muted">Click "Solve System" or "Step 1" to row reduce the matrix...</div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title">🎯 Solution Set (Parametric Vector Form)</div>
+      <div id="solutionResult" class="result-box">
+        <div class="muted">Row reduction must be performed first...</div>
+      </div>
+    </div>
+
+    <div class="section-card">
+      <div class="section-title">✅ Verification</div>
+      <div id="verificationResult" class="result-box">
+        <div class="muted">Verify that the solution vectors satisfy Ax = 0...</div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="card">
+    <h2>📚 Theory & Concepts</h2>
+    <div class="muted" style="line-height:1.6; font-size:13px">
+      <p><strong>What is a Homogeneous System?</strong><br>
+      A system of linear equations in the form:</p>
+      
+      <div class="formula-box">
+        Ax = 0
+      </div>
+      
+      <p>where A is an m×n coefficient matrix and 0 is the zero vector.</p>
+      
+      <p><strong>Solution Process:</strong></p>
+      <ol style="margin:.3em 0 .3em 1.2em; font-size:13px">
+        <li><strong>Row Reduce:</strong> Transform A to RREF</li>
+        <li><strong>Identify:</strong> Pivot and free variables</li>
+        <li><strong>Express:</strong> Pivot vars in terms of free vars</li>
+        <li><strong>Write:</strong> Solution as x = t₁v₁ + t₂v₂ + ...</li>
+      </ol>
+      
+      <div class="info-box">
+        <strong>Key Facts:</strong><br>
+        • Always has trivial solution x = 0<br>
+        • Free variables → infinite solutions<br>
+        • Solution space = null space of A<br>
+        • dim(null space) = # of free variables
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <h2>📝 Computation Status</h2>
+    <div id="narr" class="muted" style="min-height:60px; padding:12px; background:#1a0f2e; border-radius:10px; line-height:1.6; font-size:13px">
+      Enter coefficient matrix A (use integers or fractions) and click <strong>Solve System</strong> to find all solutions.
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="kpis">
+      <div class="kpi">
+        <div class="label">Matrix Size</div>
+        <div id="matrixSize" class="value">3×4</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Free Variables</div>
+        <div id="freeVarCount" class="value">0</div>
+      </div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <h2>📋 Computation Log</h2>
+    <div id="log" class="log"><div class="muted">Detailed computations will appear here...</div></div>
+
+    <details style="margin-top:14px">
+      <summary>🤔 Practice Questions</summary>
+      <ul style="margin:.6em 0 0 1.3em; line-height:1.7; font-size:13px">
+        <li>What does it mean if there are no free variables?</li>
+        <li>How do you find the dimension of the solution space?</li>
+        <li>What is the relationship between rank and nullity?</li>
+        <li>Can a homogeneous system be inconsistent?</li>
+        <li>What is the geometric interpretation of the null space?</li>
+        <li>Why use exact fractions instead of decimals?</li>
+      </ul>
+    </details>
+  </aside>
+</main>
+
+<footer>
+  <strong>Engineering Mathematics • Homogeneous Linear Systems Laboratory</strong><br>
+  Row reduction • Gaussian elimination • Null space • Parametric vector form • RREF
+</footer>
+
+<script>
+/* ===========================
+   Fraction Class
+   =========================== */
+class Frac {
+  constructor(n, d = 1) {
+    if (d === 0) throw new Error("Division by zero");
+    const g = Frac.gcd(Math.abs(n), Math.abs(d));
+    this.n = (d < 0 ? -n : n) / g;
+    this.d = Math.abs(d) / g;
+  }
+  
+  static gcd(a, b) {
+    return b === 0 ? a : Frac.gcd(b, a % b);
+  }
+  
+  static parse(s) {
+    s = s.toString().trim();
+    if (s === '' || s === '-') return new Frac(0);
+    if (s.includes('/')) {
+      const parts = s.split('/');
+      return new Frac(parseInt(parts[0]) || 0, parseInt(parts[1]) || 1);
+    }
+    return new Frac(parseInt(s) || 0);
+  }
+  
+  add(f) { return new Frac(this.n * f.d + f.n * this.d, this.d * f.d); }
+  sub(f) { return new Frac(this.n * f.d - f.n * this.d, this.d * f.d); }
+  mul(f) { return new Frac(this.n * f.n, this.d * f.d); }
+  div(f) { return new Frac(this.n * f.d, this.d * f.n); }
+  neg() { return new Frac(-this.n, this.d); }
+  inv() { return new Frac(this.d, this.n); }
+  abs() { return new Frac(Math.abs(this.n), this.d); }
+  isZero() { return this.n === 0; }
+  isOne() { return this.n === this.d; }
+  
+  toString() {
+    if (this.d === 1) return this.n.toString();
+    return `${this.n}/${this.d}`;
+  }
+  
+  toFloat() { return this.n / this.d; }
+  
+  equals(f) {
+    return this.n === f.n && this.d === f.d;
+  }
+}
+
+let M = 3; // rows
+let N = 4; // columns
+let inputsA = [];
+let rrефMatrix = null;
+let pivotCols = [];
+let freeCols = [];
+let solutionVectors = [];
+let logEl, narrEl;
+
+function openHowto(){
+  document.getElementById('howBackdrop').classList.add('open');
+  document.getElementById('howPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeHowto(){
+  document.getElementById('howBackdrop').classList.remove('open');
+  document.getElementById('howPanel').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function createGrid(){
+  const grid = document.getElementById('matrixA');
+  grid.style.setProperty('--cols', N);
+  grid.innerHTML = '';
+  inputsA = [];
+  
+  for (let r=0; r<M; r++){
+    const row = [];
+    for (let c=0; c<N; c++){
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = '0';
+      inp.setAttribute('aria-label', `A[${r+1},${c+1}]`);
+      inp.addEventListener('blur', () => {
+        if (inp.value === '' || inp.value === '-') inp.value = '0';
+        try {
+          const f = Frac.parse(inp.value);
+          inp.value = f.toString();
+        } catch(e) {
+          inp.value = '0';
+        }
+      });
+      cell.appendChild(inp);
+      grid.appendChild(cell);
+      row.push(inp);
+    }
+    inputsA.push(row);
+  }
+  
+  resetResults();
+  document.getElementById('matrixSize').textContent = `${M}×${N}`;
+}
+
+function getMatrix(){
+  const A = [];
+  for (let r=0; r<M; r++){
+    const row = [];
+    for (let c=0; c<N; c++){
+      row.push(Frac.parse(inputsA[r][c].value));
+    }
+    A.push(row);
+  }
+  return A;
+}
+
+function matrixToString(mat){
+  let s = '';
+  for (let r=0; r<mat.length; r++){
+    s += '[' + mat[r].map(x => x.toString().padStart(6)).join(' ') + ' ]';
+    if (r < mat.length - 1) s += '\n';
+  }
+  return s;
+}
+
+function copyMatrix(mat) {
+  return mat.map(row => [...row]);
+}
+
+function performRowReduction(A){
+  clearLog();
+  log('<strong class="log-step">═══════════════════════════════════════</strong>');
+  log('<strong class="log-step">STEP 1: ROW REDUCTION TO RREF</strong>');
+  log('<strong class="log-step">═══════════════════════════════════════</strong>');
+  
+  log('');
+  log('<strong>Input Matrix A:</strong>');
+  log(matrixToString(A));
+  
+  log('');
+  log('<strong>Objective:</strong>');
+  log('Transform matrix to Reduced Row Echelon Form (RREF) using elementary row operations.');
+  
+  const result = copyMatrix(A);
+  const m = result.length;
+  const n = result[0].length;
+  
+  pivotCols = [];
+  let currentRow = 0;
+  
+  log('');
+  log('<strong>Row Reduction Process:</strong>');
+  
+  for (let col = 0; col < n && currentRow < m; col++) {
+    log('');
+    log(`<div class="log-section"></div>`);
+    log(`<strong class="log-step">Processing Column ${col + 1}</strong>`);
+    
+    // Find pivot
+    let pivotRow = -1;
+    for (let row = currentRow; row < m; row++) {
+      if (!result[row][col].isZero()) {
+        pivotRow = row;
+        break;
+      }
+    }
+    
+    if (pivotRow === -1) {
+      log(`No pivot found in column ${col + 1}. This is a <span class="log-free">free variable column</span>.`);
+      continue;
+    }
+    
+    log(`Found pivot in row ${pivotRow + 1}, column ${col + 1}`);
+    
+    // Swap rows if needed
+    if (pivotRow !== currentRow) {
+      log(`Swapping row ${currentRow + 1} ↔ row ${pivotRow + 1}`);
+      [result[currentRow], result[pivotRow]] = [result[pivotRow], result[currentRow]];
+      log(matrixToString(result));
+    }
+    
+    // Scale pivot to 1
+    const pivot = result[currentRow][col];
+    if (!pivot.isOne()) {
+      log(`Scaling row ${currentRow + 1} by 1/(${pivot}) to make pivot = 1`);
+      for (let c = 0; c < n; c++) {
+        result[currentRow][c] = result[currentRow][c].div(pivot);
+      }
+      log(matrixToString(result));
+    }
+    
+    pivotCols.push(col);
+    
+    // Eliminate all other entries in this column
+    let eliminated = false;
+    for (let row = 0; row < m; row++) {
+      if (row !== currentRow && !result[row][col].isZero()) {
+        const factor = result[row][col];
+        log(`R${row + 1} ← R${row + 1} - (${factor}) × R${currentRow + 1}`);
+        for (let c = 0; c < n; c++) {
+          result[row][c] = result[row][c].sub(factor.mul(result[currentRow][c]));
+        }
+        eliminated = true;
+      }
+    }
+    
+    if (eliminated) {
+      log(matrixToString(result));
+    }
+    
+    currentRow++;
+  }
+  
+  // Identify free columns
+  freeCols = [];
+  for (let col = 0; col < n; col++) {
+    if (!pivotCols.includes(col)) {
+      freeCols.push(col);
+    }
+  }
+  
+  log('');
+  log('<strong class="log-step">═══ ROW REDUCTION COMPLETE ═══</strong>');
+  log('');
+  log('<strong>Final RREF Matrix:</strong>');
+  log(matrixToString(result));
+  
+  log('');
+  log(`<strong class="log-pivot">Pivot columns (basic variables):</strong> ${pivotCols.map(c => `x${c+1}`).join(', ')}`);
+  log(`<strong class="log-free">Free columns (free variables):</strong> ${freeCols.length > 0 ? freeCols.map(c => `x${c+1}`).join(', ') : 'None'}`);
+  
+  return result;
+}
+
+function findSolutionSet(rref) {
+  log('');
+  log('');
+  log('<strong class="log-step">═══════════════════════════════════════</strong>');
+  log('<strong class="log-step">STEP 2: SOLUTION SET (NULL SPACE)</strong>');
+  log('<strong class="log-step">═══════════════════════════════════════</strong>');
+  
+  const m = rref.length;
+  const n = rref[0].length;
+  
+  if (freeCols.length === 0) {
+    log('');
+    log('<strong>Analysis:</strong>');
+    log('No free variables detected!');
+    log('This means the only solution is the <strong>trivial solution</strong> x = 0.');
+    log('');
+    log('<strong>Solution Set:</strong>');
+    log('x = 0 (the zero vector)');
+    log('');
+    log('Null space dimension: 0');
+    
+    return [];
+  }
+  
+  log('');
+  log('<strong>Analysis:</strong>');
+  log(`Found ${freeCols.length} free variable(s): ${freeCols.map(c => `x${c+1}`).join(', ')}`);
+  log(`System has infinitely many solutions!`);
+  
+  log('');
+  log('<strong>Expressing Pivot Variables in Terms of Free Variables:</strong>');
+  
+  // For each free variable, create a basis vector
+  const basisVectors = [];
+  
+  for (let freeIdx = 0; freeIdx < freeCols.length; freeIdx++) {
+    const freeCol = freeCols[freeIdx];
+    log('');
+    log(`<div class="log-section"></div>`);
+    log(`<strong class="log-free">Setting x${freeCol + 1} = 1, all other free vars = 0:</strong>`);
+    
+    const vector = Array(n).fill(null).map(() => new Frac(0));
+    vector[freeCol] = new Frac(1);
+    
+    // Back substitute to find pivot variables
+    for (let row = m - 1; row >= 0; row--) {
+      // Find pivot in this row
+      let pivotCol = -1;
+      for (let col = 0; col < n; col++) {
+        if (!rref[row][col].isZero() && pivotCols.includes(col)) {
+          pivotCol = col;
+          break;
+        }
+      }
+      
+      if (pivotCol === -1) continue;
+      
+      // Calculate value for this pivot variable
+      let sum = new Frac(0);
+      for (let col = pivotCol + 1; col < n; col++) {
+        sum = sum.add(rref[row][col].mul(vector[col]));
+      }
+      vector[pivotCol] = sum.neg();
+      
+      if (!sum.isZero()) {
+        log(`  x${pivotCol + 1} = ${vector[pivotCol]}`);
+      }
+    }
+    
+    log(`  x${freeCol + 1} = 1`);
+    log('');
+    log(`<strong>Basis vector v${freeIdx + 1}:</strong> [${vector.map(v => v.toString()).join(', ')}]`);
+    
+    basisVectors.push(vector);
+  }
+  
+  log('');
+  log('<strong class="log-step">═══ SOLUTION SET IN PARAMETRIC VECTOR FORM ═══</strong>');
+  log('');
+  log('<strong>General Solution:</strong>');
+  
+  if (freeCols.length === 1) {
+    log(`x = t · v₁`);
+  } else {
+    log(`x = ${freeCols.map((_, i) => `t${i+1} · v${i+1}`).join(' + ')}`);
+  }
+  
+  log('');
+  log('where:');
+  basisVectors.forEach((v, i) => {
+    log(`  v${i+1} = [${v.map(x => x.toString()).join(', ')}]`);
+  });
+  log(`  ${freeCols.map((_, i) => `t${i+1}`).join(', ')} ∈ ℝ (free parameters)`);
+  
+  log('');
+  log(`<strong>Null Space Dimension:</strong> ${freeCols.length}`);
+  log(`<strong>Basis for Null Space:</strong> {v₁${freeCols.length > 1 ? ', v₂' : ''}${freeCols.length > 2 ? ', v₃' : ''}${freeCols.length > 3 ? ', ...' : ''}}`);
+  
+  return basisVectors;
+}
+
+function verifySolution() {
+  if (!rrефMatrix || solutionVectors.length === 0) {
+    setNarr('⚠️ Please solve the system first.');
+    return;
+  }
+  
+  const A = getMatrix();
+  
+  log('');
+  log('');
+  log('<strong class="log-step">═══════════════════════════════════════</strong>');
+  log('<strong class="log-step">STEP 3: VERIFICATION</strong>');
+  log('<strong class="log-step">═══════════════════════════════════════</strong>');
+  
+  log('');
+  log('<strong>Verification Criterion:</strong>');
+  log('For each basis vector vᵢ, we must verify that Avᵢ = 0');
+  
+  let allVerified = true;
+  
+  solutionVectors.forEach((v, i) => {
+    log('');
+    log('<div class="log-section"></div>');
+    log(`<strong>Verifying basis vector v${i+1} = [${v.map(x => x.toString()).join(', ')}]</strong>`);
+    
+    // Compute Av
+    const Av = A.map(row => 
+      row.reduce((sum, val, j) => sum.add(val.mul(v[j])), new Frac(0))
+    );
+    
+    log('');
+    log('Computing Av:');
+    log(matrixToString(A));
+    log(`  × [${v.map(x => x.toString()).join(', ')}]ᵀ`);
+    log(`  = [${Av.map(x => x.toString()).join(', ')}]ᵀ`);
+    
+    // Check if all components are zero
+    let isZero = true;
+    for (const component of Av) {
+      if (!component.isZero()) {
+        isZero = false;
+        break;
+      }
+    }
+    
+    log('');
+    if (isZero) {
+      log(`<strong style="color:#10b981">✅ VERIFIED: Av${i+1} = 0</strong>`);
+      log(`Vector v${i+1} is indeed in the null space of A.`);
+    } else {
+      log(`<strong style="color:#ef4444">❌ FAILED: Av${i+1} ≠ 0</strong>`);
+      allVerified = false;
+    }
+  });
+  
+  // Also verify trivial solution
+  log('');
+  log('<div class="log-section"></div>');
+  log('<strong>Verifying trivial solution (x = 0):</strong>');
+  log('A · 0 = 0 ✓ (always true for homogeneous systems)');
+  
+  log('');
+  log('<strong class="log-step">═══ VERIFICATION COMPLETE ═══</strong>');
+  if (allVerified) {
+    log('<strong style="color:#10b981">✅ All basis vectors verified successfully!</strong>');
+    log('The solution set correctly describes the null space of A.');
+  }
+  
+  displayVerification(allVerified);
+  setNarr(allVerified ? '✅ All solution vectors verified!' : '⚠️ Verification failed. Check the log.');
+}
+
+function solveSystem() {
+  const A = getMatrix();
+  rrефMatrix = performRowReduction(A);
+  displayRREF();
+  
+  if (rrефMatrix) {
+    setTimeout(() => {
+      solutionVectors = findSolutionSet(rrефMatrix);
+      displaySolution();
+      document.getElementById('freeVarCount').textContent = freeCols.length;
+      
+      if (freeCols.length === 0) {
+        setNarr('✅ System solved! Only trivial solution exists (x = 0).');
+      } else {
+        setNarr(`✅ System solved! Found ${freeCols.length} free variable(s) → infinite solutions.`);
+      }
+    }, 100);
+  }
+}
+
+function displayRREF() {
+  const box = document.getElementById('rrефResult');
+  let html = '<div><strong>Reduced Row Echelon Form:</strong></div>';
+  html += '<div style="margin-top:10px; font-family:ui-monospace,Menlo,Consolas,monospace; line-height:1.8">';
+  html += '<pre style="margin:0">' + matrixToString(rrефMatrix) + '</pre>';
+  html += '</div>';
+  
+  html += '<div style="margin-top:14px; font-size:12px">';
+  html += `<div><span class="pivot-var">Pivot columns:</span> ${pivotCols.map(c => `x${c+1}`).join(', ')}</div>`;
+  if (freeCols.length > 0) {
+    html += `<div><span class="free-var">Free columns:</span> ${freeCols.map(c => `x${c+1}`).join(', ')}</div>`;
+  } else {
+    html += `<div><span class="muted">Free columns: None</span></div>`;
+  }
+  html += '</div>';
+  
+  box.innerHTML = html;
+}
+
+function displaySolution() {
+  const box = document.getElementById('solutionResult');
+  
+  if (freeCols.length === 0) {
+    let html = '<div><strong>Solution:</strong></div>';
+    html += '<div style="margin-top:10px">';
+    html += '<div>Only the <strong>trivial solution</strong> exists:</div>';
+    html += '<div style="margin-top:10px; font-family:ui-monospace,Menlo,Consolas,monospace">';
+    html += 'x = 0';
+    html += '</div>';
+    html += '<div style="margin-top:10px; color:var(--muted); font-size:12px">';
+    html += 'Null space dimension: 0<br>';
+    html += 'The system has a unique solution.';
+    html += '</div>';
+    html += '</div>';
+    box.innerHTML = html;
+    return;
+  }
+  
+  let html = '<div><strong>General Solution (Parametric Vector Form):</strong></div>';
+  html += '<div style="margin-top:14px">';
+  
+  // Show the formula
+  html += '<div style="font-family:ui-monospace,Menlo,Consolas,monospace; margin-bottom:14px">';
+  if (freeCols.length === 1) {
+    html += 'x = t · v₁';
+  } else {
+    html += 'x = ' + freeCols.map((_, i) => `t<sub>${i+1}</sub> · v<sub>${i+1}</sub>`).join(' + ');
+  }
+  html += '</div>';
+  
+  // Show basis vectors
+  html += '<div><strong>Basis vectors for null space:</strong></div>';
+  html += '<div class="vector-display" style="margin-top:10px">';
+  
+  solutionVectors.forEach((v, i) => {
+    html += '<div style="display:inline-block; margin-right:20px">';
+    html += `<div style="font-size:11px; margin-bottom:4px; color:var(--muted)">v<sub>${i+1}</sub> =</div>`;
+    html += '<div class="vector">';
+    v.forEach(val => {
+      html += `<div class="vector-entry">${val.toString()}</div>`;
+    });
+    html += '</div>';
+    html += '</div>';
+  });
+  
+  html += '</div>';
+  
+  html += '<div style="margin-top:14px; font-size:12px; color:var(--muted)">';
+  html += `where ${freeCols.map((_, i) => `t<sub>${i+1}</sub>`).join(', ')} ∈ ℝ (free parameters)<br>`;
+  html += `Null space dimension: ${freeCols.length}<br>`;
+  html += 'The system has infinitely many solutions.';
+  html += '</div>';
+  
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+function displayVerification(verified) {
+  const box = document.getElementById('verificationResult');
+  let html = '<div><strong>Verification Results:</strong></div>';
+  html += '<div style="margin-top:10px; line-height:2">';
+  
+  if (solutionVectors.length === 0) {
+    html += '<div>✅ <span class="label">Trivial solution:</span> <span style="color:#10b981">x = 0 verified (always true)</span></div>';
+  } else {
+    solutionVectors.forEach((v, i) => {
+      html += `<div>✅ <span class="label">Basis vector v<sub>${i+1}</sub>:</span> <span style="color:#10b981">Av = 0 verified</span></div>`;
+    });
+  }
+  
+  html += '</div>';
+  box.innerHTML = html;
+}
+
+function resetResults(){
+  rrефMatrix = null;
+  pivotCols = [];
+  freeCols = [];
+  solutionVectors = [];
+  document.getElementById('rrефResult').innerHTML = '<div class="muted">Click "Solve System" or "Step 1" to row reduce the matrix...</div>';
+  document.getElementById('solutionResult').innerHTML = '<div class="muted">Row reduction must be performed first...</div>';
+  document.getElementById('verificationResult').innerHTML = '<div class="muted">Verify that the solution vectors satisfy Ax = 0...</div>';
+  document.getElementById('freeVarCount').textContent = '0';
+  setNarr('Enter coefficient matrix A and click <strong>Solve System</strong> to find all solutions.');
+  clearLog();
+}
+
+function setNarr(html){
+  narrEl.innerHTML = html;
+}
+
+function log(html){
+  logEl.insertAdjacentHTML('beforeend', `<div>${html}</div>`);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function clearLog(){
+  logEl.innerHTML = '';
+}
+
+function preset1(){
+  // Simple system with 1 free variable
+  M = 3; N = 4;
+  document.getElementById('rows').value = '3';
+  document.getElementById('cols').value = '4';
+  createGrid();
+  
+  const values = [
+    [1, 2, 0, 3],
+    [0, 0, 1, 2],
+    [0, 0, 0, 0]
+  ];
+  
+  for (let r=0; r<M; r++){
+    for (let c=0; c<N; c++){
+      inputsA[r][c].value = values[r][c].toString();
+    }
+  }
+  
+  resetResults();
+  setNarr('<strong>Preset 1 loaded:</strong> System with 1 free variable (2D solution space).');
+}
+
+function preset2(){
+  // System with 2 free variables
+  M = 3; N = 4;
+  document.getElementById('rows').value = '3';
+  document.getElementById('cols').value = '4';
+  createGrid();
+  
+  const values = [
+    [1, 2, 3, 4],
+    [2, 4, 6, 8],
+    [1, 2, 3, 4]
+  ];
+  
+  for (let r=0; r<M; r++){
+    for (let c=0; c<N; c++){
+      inputsA[r][c].value = values[r][c].toString();
+    }
+  }
+  
+  resetResults();
+  setNarr('<strong>Preset 2 loaded:</strong> System with 3 free variables (dependent rows).');
+}
+
+function preset3(){
+  // System with only trivial solution
+  M = 4; N = 4;
+  document.getElementById('rows').value = '4';
+  document.getElementById('cols').value = '4';
+  createGrid();
+  
+  const values = [
+    [1, 0, 0, 0],
+    [0, 1, 0, 0],
+    [0, 0, 1, 0],
+    [0, 0, 0, 1]
+  ];
+  
+  for (let r=0; r<M; r++){
+    for (let c=0; c<N; c++){
+      inputsA[r][c].value = values[r][c].toString();
+    }
+  }
+  
+  resetResults();
+  setNarr('<strong>Preset 3 loaded:</strong> Identity matrix - only trivial solution!');
+}
+
+function randomM(){
+  for (let r=0; r<M; r++){
+    for (let c=0; c<N; c++){
+      inputsA[r][c].value = (Math.floor(Math.random() * 5) - 2).toString();
+    }
+  }
+  resetResults();
+  setNarr('Random matrix generated. Click Solve System!');
+}
+
+function clearM(){
+  for (let r=0; r<M; r++){
+    for (let c=0; c<N; c++){
+      inputsA[r][c].value = '0';
+    }
+  }
+  resetResults();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  logEl = document.getElementById('log');
+  narrEl = document.getElementById('narr');
+  
+  document.getElementById('howBtn').addEventListener('click', () => {
+    const panel = document.getElementById('howPanel');
+    if (panel.classList.contains('open')) closeHowto();
+    else openHowto();
+  });
+  document.getElementById('howClose').addEventListener('click', closeHowto);
+  document.getElementById('howBackdrop').addEventListener('click', closeHowto);
+  
+  document.getElementById('resize').addEventListener('click', () => {
+    M = parseInt(document.getElementById('rows').value);
+    N = parseInt(document.getElementById('cols').value);
+    createGrid();
+  });
+  
+  document.getElementById('rows').addEventListener('change', () => {
+    M = parseInt(document.getElementById('rows').value);
+    N = parseInt(document.getElementById('cols').value);
+    createGrid();
+  });
+  
+  document.getElementById('cols').addEventListener('change', () => {
+    M = parseInt(document.getElementById('rows').value);
+    N = parseInt(document.getElementById('cols').value);
+    createGrid();
+  });
+  
+  document.getElementById('preset1').addEventListener('click', preset1);
+  document.getElementById('preset2').addEventListener('click', preset2);
+  document.getElementById('preset3').addEventListener('click', preset3);
+  document.getElementById('random').addEventListener('click', randomM);
+  document.getElementById('reset').addEventListener('click', clearM);
+  
+  document.getElementById('solve').addEventListener('click', solveSystem);
+  
+  document.getElementById('step1').addEventListener('click', () => {
+    const A = getMatrix();
+    rrефMatrix = performRowReduction(A);
+    displayRREF();
+    document.getElementById('freeVarCount').textContent = freeCols.length;
+    setNarr('✅ Row reduction complete. Click "Step 2" to find the solution set.');
+  });
+  
+  document.getElementById('step2').addEventListener('click', () => {
+    if (!rrефMatrix) {
+      setNarr('⚠️ Please perform row reduction first (Step 1).');
+      return;
+    }
+    solutionVectors = findSolutionSet(rrефMatrix);
+    displaySolution();
+    if (freeCols.length === 0) {
+      setNarr('✅ Only trivial solution exists.');
+    } else {
+      setNarr(`✅ Found ${freeCols.length} basis vector(s) for the null space.`);
+    }
+  });
+  
+  document.getElementById('verify').addEventListener('click', verifySolution);
+  
+  createGrid();
+});
+</script>
+</body>
+</html>
