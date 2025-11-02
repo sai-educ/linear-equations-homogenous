@@ -218,7 +218,7 @@
   .formula-box{
     background:#1a0f2e; border:1px solid #3a1a5f; 
     border-radius:10px; padding:12px; margin:10px 0;
-    text-align:center; line-height:1.8;
+    line-height:1.8;
     font-family:ui-monospace,Menlo,Consolas,monospace;
   }
 
@@ -243,6 +243,35 @@
   .vector-entry{
     text-align:center;
     padding:4px 0;
+    font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:13px;
+  }
+
+  .solution-type{
+    display:inline-block;
+    padding:6px 12px;
+    border-radius:6px;
+    font-weight:600;
+    font-size:13px;
+    margin-bottom:12px;
+  }
+  .solution-type.trivial{
+    background:#78350f;
+    border:1px solid #f59e0b;
+    color:#fbbf24;
+  }
+  .solution-type.nontrivial{
+    background:#065f46;
+    border:1px solid #10b981;
+    color:#34d399;
+  }
+
+  .var-equation{
+    padding:8px 12px;
+    background:#0f0820;
+    border-left:3px solid #a855f7;
+    border-radius:4px;
+    margin:6px 0;
     font-family:ui-monospace,Menlo,Consolas,monospace;
     font-size:13px;
   }
@@ -388,7 +417,7 @@
     </div>
 
     <div class="section-card">
-      <div class="section-title">🎯 Solution Set (Parametric Vector Form)</div>
+      <div class="section-title">🎯 Solution Set</div>
       <div id="solutionResult" class="result-box">
         <div class="muted">Row reduction must be performed first...</div>
       </div>
@@ -532,6 +561,13 @@ let freeCols = [];
 let solutionVectors = [];
 let logEl, narrEl;
 
+const varNames = ['x', 'y', 'z', 'w', 'v', 'u', 's', 't'];
+
+function getVarName(index) {
+  if (index < varNames.length) return varNames[index];
+  return `x${index + 1}`;
+}
+
 function openHowto(){
   document.getElementById('howBackdrop').classList.add('open');
   document.getElementById('howPanel').classList.add('open');
@@ -630,7 +666,7 @@ function performRowReduction(A){
   for (let col = 0; col < n && currentRow < m; col++) {
     log('');
     log(`<div class="log-section"></div>`);
-    log(`<strong class="log-step">Processing Column ${col + 1}</strong>`);
+    log(`<strong class="log-step">Processing Column ${col + 1} (${getVarName(col)})</strong>`);
     
     // Find pivot
     let pivotRow = -1;
@@ -642,7 +678,7 @@ function performRowReduction(A){
     }
     
     if (pivotRow === -1) {
-      log(`No pivot found in column ${col + 1}. This is a <span class="log-free">free variable column</span>.`);
+      log(`No pivot found in column ${col + 1}. ${getVarName(col)} is a <span class="log-free">free variable</span>.`);
       continue;
     }
     
@@ -702,10 +738,30 @@ function performRowReduction(A){
   log(matrixToString(result));
   
   log('');
-  log(`<strong class="log-pivot">Pivot columns (basic variables):</strong> ${pivotCols.map(c => `x${c+1}`).join(', ')}`);
-  log(`<strong class="log-free">Free columns (free variables):</strong> ${freeCols.length > 0 ? freeCols.map(c => `x${c+1}`).join(', ') : 'None'}`);
+  log(`<strong class="log-pivot">Pivot columns (basic variables):</strong> ${pivotCols.map(c => getVarName(c)).join(', ')}`);
+  log(`<strong class="log-free">Free columns (free variables):</strong> ${freeCols.length > 0 ? freeCols.map(c => getVarName(c)).join(', ') : 'None'}`);
   
   return result;
+}
+
+function formatTerm(coef, paramName) {
+  if (coef.isZero()) return null;
+  
+  let str = '';
+  if (coef.n < 0) {
+    str = '- ';
+    coef = coef.neg();
+  } else {
+    str = '+ ';
+  }
+  
+  if (!coef.isOne()) {
+    str += coef.toString() + paramName;
+  } else {
+    str += paramName;
+  }
+  
+  return str;
 }
 
 function findSolutionSet(rref) {
@@ -722,32 +778,38 @@ function findSolutionSet(rref) {
     log('');
     log('<strong>Analysis:</strong>');
     log('No free variables detected!');
-    log('This means the only solution is the <strong>trivial solution</strong> x = 0.');
+    log('This means the only solution is the <strong>trivial solution</strong>.');
     log('');
     log('<strong>Solution Set:</strong>');
-    log('x = 0 (the zero vector)');
+    const varList = Array(n).fill(null).map((_, i) => getVarName(i)).join(', ');
+    log(`(${varList}) = (${Array(n).fill('0').join(', ')})`);
+    log('');
+    log('This is the zero vector - all variables equal zero.');
     log('');
     log('Null space dimension: 0');
+    log('The matrix has full column rank.');
     
     return [];
   }
   
   log('');
   log('<strong>Analysis:</strong>');
-  log(`Found ${freeCols.length} free variable(s): ${freeCols.map(c => `x${c+1}`).join(', ')}`);
+  log(`Found ${freeCols.length} free variable(s): ${freeCols.map(c => getVarName(c)).join(', ')}`);
   log(`System has infinitely many solutions!`);
   
   log('');
-  log('<strong>Expressing Pivot Variables in Terms of Free Variables:</strong>');
+  log('<strong>Step 2.1: Express Each Variable</strong>');
+  log('We express pivot (basic) variables in terms of free variables.');
   
   // For each free variable, create a basis vector
   const basisVectors = [];
+  const paramNames = freeCols.map((_, i) => `t${i > 0 ? i + 1 : ''}`);
   
   for (let freeIdx = 0; freeIdx < freeCols.length; freeIdx++) {
     const freeCol = freeCols[freeIdx];
     log('');
     log(`<div class="log-section"></div>`);
-    log(`<strong class="log-free">Setting x${freeCol + 1} = 1, all other free vars = 0:</strong>`);
+    log(`<strong class="log-free">Case ${freeIdx + 1}: Setting ${getVarName(freeCol)} = 1, other free vars = 0</strong>`);
     
     const vector = Array(n).fill(null).map(() => new Frac(0));
     vector[freeCol] = new Frac(1);
@@ -773,46 +835,84 @@ function findSolutionSet(rref) {
       vector[pivotCol] = sum.neg();
       
       if (!sum.isZero()) {
-        log(`  x${pivotCol + 1} = ${vector[pivotCol]}`);
+        log(`  From row ${row + 1}: ${getVarName(pivotCol)} = ${vector[pivotCol]}`);
       }
     }
     
-    log(`  x${freeCol + 1} = 1`);
+    log(`  ${getVarName(freeCol)} = 1 (free variable)`);
+    
+    // Log all other free variables set to 0
+    freeCols.forEach((fc, fi) => {
+      if (fi !== freeIdx) {
+        log(`  ${getVarName(fc)} = 0 (other free variable)`);
+      }
+    });
+    
     log('');
-    log(`<strong>Basis vector v${freeIdx + 1}:</strong> [${vector.map(v => v.toString()).join(', ')}]`);
+    log(`<strong>Basis vector v${freeIdx + 1} = (${vector.map(v => v.toString()).join(', ')})</strong>`);
     
     basisVectors.push(vector);
   }
   
   log('');
-  log('<strong class="log-step">═══ SOLUTION SET IN PARAMETRIC VECTOR FORM ═══</strong>');
+  log('<strong class="log-step">═══ SOLUTION SET FORMULATION ═══</strong>');
   log('');
-  log('<strong>General Solution:</strong>');
+  log('<strong>Step 2.2: General Solution Expression</strong>');
+  log('Each variable can be written as a linear combination:');
+  log('');
   
-  if (freeCols.length === 1) {
-    log(`x = t · v₁`);
-  } else {
-    log(`x = ${freeCols.map((_, i) => `t${i+1} · v${i+1}`).join(' + ')}`);
+  // Show how each variable is expressed
+  for (let varIdx = 0; varIdx < n; varIdx++) {
+    let expr = `${getVarName(varIdx)} = `;
+    let terms = [];
+    
+    for (let freeIdx = 0; freeIdx < freeCols.length; freeIdx++) {
+      const coef = basisVectors[freeIdx][varIdx];
+      const term = formatTerm(coef, paramNames[freeIdx]);
+      if (term) terms.push(term);
+    }
+    
+    if (terms.length === 0) {
+      expr += '0';
+    } else {
+      expr += terms.join(' ').replace(/^\+ /, '');
+    }
+    
+    log(expr);
   }
   
   log('');
-  log('where:');
-  basisVectors.forEach((v, i) => {
-    log(`  v${i+1} = [${v.map(x => x.toString()).join(', ')}]`);
-  });
-  log(`  ${freeCols.map((_, i) => `t${i+1}`).join(', ')} ∈ ℝ (free parameters)`);
+  log('<strong>Step 2.3: Parametric Vector Form</strong>');
+  const varList = Array(n).fill(null).map((_, i) => getVarName(i)).join(', ');
+  
+  if (freeCols.length === 1) {
+    log(`(${varList}) = t · (${basisVectors[0].map(v => v.toString()).join(', ')})`);
+  } else {
+    const vectorTerms = basisVectors.map((v, i) => 
+      `${paramNames[i]} · (${v.map(x => x.toString()).join(', ')})`
+    ).join(' + ');
+    log(`(${varList}) = ${vectorTerms}`);
+  }
   
   log('');
-  log(`<strong>Null Space Dimension:</strong> ${freeCols.length}`);
-  log(`<strong>Basis for Null Space:</strong> {v₁${freeCols.length > 1 ? ', v₂' : ''}${freeCols.length > 2 ? ', v₃' : ''}${freeCols.length > 3 ? ', ...' : ''}}`);
+  log(`where ${paramNames.join(', ')} ∈ ℝ (free parameters)`);
+  
+  log('');
+  log(`<strong>Null Space Properties:</strong>`);
+  log(`• Dimension: ${freeCols.length}`);
+  log(`• Basis: {v₁${freeCols.length > 1 ? ', v₂' : ''}${freeCols.length > 2 ? ', v₃' : ''}${freeCols.length > 3 ? ', ...' : ''}}`);
+  log(`• The solution set forms a ${freeCols.length}-dimensional subspace of ℝ${n}`);
   
   return basisVectors;
 }
 
 function verifySolution() {
-  if (!rrефMatrix || solutionVectors.length === 0) {
-    setNarr('⚠️ Please solve the system first.');
-    return;
+  if (!rrефMatrix || (freeCols.length === 0 && solutionVectors.length === 0)) {
+    // Verify trivial solution
+    if (!rrефMatrix) {
+      setNarr('⚠️ Please solve the system first.');
+      return;
+    }
   }
   
   const A = getMatrix();
@@ -825,56 +925,67 @@ function verifySolution() {
   
   log('');
   log('<strong>Verification Criterion:</strong>');
-  log('For each basis vector vᵢ, we must verify that Avᵢ = 0');
+  log('For homogeneous systems Ax = 0, we verify that each solution satisfies this equation.');
   
   let allVerified = true;
   
-  solutionVectors.forEach((v, i) => {
+  if (solutionVectors.length === 0) {
+    // Verify trivial solution
     log('');
-    log('<div class="log-section"></div>');
-    log(`<strong>Verifying basis vector v${i+1} = [${v.map(x => x.toString()).join(', ')}]</strong>`);
-    
-    // Compute Av
-    const Av = A.map(row => 
-      row.reduce((sum, val, j) => sum.add(val.mul(v[j])), new Frac(0))
-    );
-    
+    log('<strong>Verifying trivial solution:</strong>');
+    const varList = Array(N).fill(null).map((_, i) => getVarName(i)).join(', ');
+    log(`(${varList}) = (${Array(N).fill('0').join(', ')})`);
     log('');
-    log('Computing Av:');
-    log(matrixToString(A));
-    log(`  × [${v.map(x => x.toString()).join(', ')}]ᵀ`);
-    log(`  = [${Av.map(x => x.toString()).join(', ')}]ᵀ`);
-    
-    // Check if all components are zero
-    let isZero = true;
-    for (const component of Av) {
-      if (!component.isZero()) {
-        isZero = false;
-        break;
+    log('For the zero vector: A · 0 = 0');
+    log('This is always true by the properties of matrix multiplication.');
+    log('');
+    log('<strong style="color:#10b981">✅ VERIFIED: Trivial solution is correct</strong>');
+  } else {
+    solutionVectors.forEach((v, i) => {
+      log('');
+      log('<div class="log-section"></div>');
+      log(`<strong>Verifying basis vector v${i+1}:</strong>`);
+      log(`(${Array(N).fill(null).map((_, idx) => getVarName(idx)).join(', ')}) = (${v.map(x => x.toString()).join(', ')})`);
+      
+      // Compute Av
+      const Av = A.map(row => 
+        row.reduce((sum, val, j) => sum.add(val.mul(v[j])), new Frac(0))
+      );
+      
+      log('');
+      log('Computing Av:');
+      log(matrixToString(A));
+      log(`  × (${v.map(x => x.toString()).join(', ')})ᵀ`);
+      log(`  = (${Av.map(x => x.toString()).join(', ')})ᵀ`);
+      
+      // Check if all components are zero
+      let isZero = true;
+      for (const component of Av) {
+        if (!component.isZero()) {
+          isZero = false;
+          break;
+        }
       }
-    }
-    
-    log('');
-    if (isZero) {
-      log(`<strong style="color:#10b981">✅ VERIFIED: Av${i+1} = 0</strong>`);
-      log(`Vector v${i+1} is indeed in the null space of A.`);
-    } else {
-      log(`<strong style="color:#ef4444">❌ FAILED: Av${i+1} ≠ 0</strong>`);
-      allVerified = false;
-    }
-  });
-  
-  // Also verify trivial solution
-  log('');
-  log('<div class="log-section"></div>');
-  log('<strong>Verifying trivial solution (x = 0):</strong>');
-  log('A · 0 = 0 ✓ (always true for homogeneous systems)');
+      
+      log('');
+      if (isZero) {
+        log(`<strong style="color:#10b981">✅ VERIFIED: Av${i+1} = 0</strong>`);
+        log(`Basis vector v${i+1} is in the null space of A.`);
+      } else {
+        log(`<strong style="color:#ef4444">❌ FAILED: Av${i+1} ≠ 0</strong>`);
+        allVerified = false;
+      }
+    });
+  }
   
   log('');
   log('<strong class="log-step">═══ VERIFICATION COMPLETE ═══</strong>');
   if (allVerified) {
-    log('<strong style="color:#10b981">✅ All basis vectors verified successfully!</strong>');
-    log('The solution set correctly describes the null space of A.');
+    log('<strong style="color:#10b981">✅ All solution vectors verified successfully!</strong>');
+    if (solutionVectors.length > 0) {
+      log('The solution set correctly describes the null space of A.');
+      log(`Any linear combination of the basis vectors will also be a solution.`);
+    }
   }
   
   displayVerification(allVerified);
@@ -893,7 +1004,7 @@ function solveSystem() {
       document.getElementById('freeVarCount').textContent = freeCols.length;
       
       if (freeCols.length === 0) {
-        setNarr('✅ System solved! Only trivial solution exists (x = 0).');
+        setNarr('✅ System solved! Only trivial solution exists.');
       } else {
         setNarr(`✅ System solved! Found ${freeCols.length} free variable(s) → infinite solutions.`);
       }
@@ -909,11 +1020,11 @@ function displayRREF() {
   html += '</div>';
   
   html += '<div style="margin-top:14px; font-size:12px">';
-  html += `<div><span class="pivot-var">Pivot columns:</span> ${pivotCols.map(c => `x${c+1}`).join(', ')}</div>`;
+  html += `<div><span class="pivot-var">Pivot variables:</span> ${pivotCols.map(c => getVarName(c)).join(', ')}</div>`;
   if (freeCols.length > 0) {
-    html += `<div><span class="free-var">Free columns:</span> ${freeCols.map(c => `x${c+1}`).join(', ')}</div>`;
+    html += `<div><span class="free-var">Free variables:</span> ${freeCols.map(c => getVarName(c)).join(', ')}</div>`;
   } else {
-    html += `<div><span class="muted">Free columns: None</span></div>`;
+    html += `<div><span class="muted">Free variables: None</span></div>`;
   }
   html += '</div>';
   
@@ -922,41 +1033,79 @@ function displayRREF() {
 
 function displaySolution() {
   const box = document.getElementById('solutionResult');
+  const varList = Array(N).fill(null).map((_, i) => getVarName(i)).join(', ');
+  const paramNames = freeCols.map((_, i) => `t<sub>${i > 0 ? i + 1 : ''}</sub>`);
   
   if (freeCols.length === 0) {
-    let html = '<div><strong>Solution:</strong></div>';
+    let html = '<div class="solution-type trivial">⚠️ TRIVIAL SOLUTION ONLY</div>';
+    html += '<div><strong>Solution Set:</strong></div>';
     html += '<div style="margin-top:10px">';
-    html += '<div>Only the <strong>trivial solution</strong> exists:</div>';
-    html += '<div style="margin-top:10px; font-family:ui-monospace,Menlo,Consolas,monospace">';
-    html += 'x = 0';
+    html += '<div class="formula-box" style="font-size:15px; font-weight:600">';
+    html += `(${varList}) = (${Array(N).fill('0').join(', ')})`;
     html += '</div>';
-    html += '<div style="margin-top:10px; color:var(--muted); font-size:12px">';
-    html += 'Null space dimension: 0<br>';
-    html += 'The system has a unique solution.';
+    html += '<div style="margin-top:10px; color:var(--muted); font-size:13px; line-height:1.7">';
+    html += '<strong>Interpretation:</strong><br>';
+    html += '• All variables must equal zero<br>';
+    html += '• This is the only solution<br>';
+    html += '• Null space dimension: 0<br>';
+    html += '• The matrix has full column rank';
     html += '</div>';
     html += '</div>';
     box.innerHTML = html;
     return;
   }
   
-  let html = '<div><strong>General Solution (Parametric Vector Form):</strong></div>';
-  html += '<div style="margin-top:14px">';
+  let html = '<div class="solution-type nontrivial">✓ NON-TRIVIAL SOLUTIONS (INFINITE)</div>';
+  html += '<div><strong>Solution Set in Variable Form:</strong></div>';
   
-  // Show the formula
-  html += '<div style="font-family:ui-monospace,Menlo,Consolas,monospace; margin-bottom:14px">';
-  if (freeCols.length === 1) {
-    html += 'x = t · v₁';
-  } else {
-    html += 'x = ' + freeCols.map((_, i) => `t<sub>${i+1}</sub> · v<sub>${i+1}</sub>`).join(' + ');
+  // Show each variable equation
+  html += '<div style="margin-top:10px">';
+  for (let varIdx = 0; varIdx < N; varIdx++) {
+    let expr = `${getVarName(varIdx)} = `;
+    let terms = [];
+    
+    for (let freeIdx = 0; freeIdx < freeCols.length; freeIdx++) {
+      const coef = solutionVectors[freeIdx][varIdx];
+      const term = formatTerm(coef, paramNames[freeIdx].replace(/<\/?sub>/g, ''));
+      if (term) terms.push(term);
+    }
+    
+    if (terms.length === 0) {
+      expr += '0';
+    } else {
+      expr += terms.join(' ').replace(/^\+ /, '');
+    }
+    
+    html += `<div class="var-equation">${expr}</div>`;
   }
   html += '</div>';
   
+  // Show parametric vector form
+  html += '<div style="margin-top:16px"><strong>Parametric Vector Form:</strong></div>';
+  html += '<div class="formula-box" style="font-size:14px; margin-top:10px">';
+  
+  if (freeCols.length === 1) {
+    html += `(${varList}) = t · (${solutionVectors[0].map(v => v.toString()).join(', ')})`;
+  } else {
+    const vectorTerms = solutionVectors.map((v, i) => {
+      const pName = paramNames[i].replace(/<\/?sub>/g, (i === 0 ? '' : String(i + 1)));
+      return `${pName}(${v.map(x => x.toString()).join(', ')})`;
+    }).join(' + ');
+    html += `(${varList}) = ${vectorTerms}`;
+  }
+  
+  html += '</div>';
+  
+  html += '<div style="margin-top:10px; font-size:12px; color:var(--muted)">';
+  html += `where ${paramNames.join(', ')} ∈ ℝ (free parameters)`;
+  html += '</div>';
+  
   // Show basis vectors
-  html += '<div><strong>Basis vectors for null space:</strong></div>';
+  html += '<div style="margin-top:16px"><strong>Basis Vectors for Null Space:</strong></div>';
   html += '<div class="vector-display" style="margin-top:10px">';
   
   solutionVectors.forEach((v, i) => {
-    html += '<div style="display:inline-block; margin-right:20px">';
+    html += '<div style="display:inline-block; margin-right:20px; margin-bottom:10px">';
     html += `<div style="font-size:11px; margin-bottom:4px; color:var(--muted)">v<sub>${i+1}</sub> =</div>`;
     html += '<div class="vector">';
     v.forEach(val => {
@@ -968,10 +1117,12 @@ function displaySolution() {
   
   html += '</div>';
   
-  html += '<div style="margin-top:14px; font-size:12px; color:var(--muted)">';
-  html += `where ${freeCols.map((_, i) => `t<sub>${i+1}</sub>`).join(', ')} ∈ ℝ (free parameters)<br>`;
-  html += `Null space dimension: ${freeCols.length}<br>`;
-  html += 'The system has infinitely many solutions.';
+  html += '<div style="margin-top:14px; padding:12px; background:#0f0820; border-radius:8px; font-size:13px; line-height:1.7">';
+  html += '<strong style="color:#a855f7">Interpretation:</strong><br>';
+  html += `• The system has <strong>infinitely many solutions</strong><br>`;
+  html += `• Null space dimension: ${freeCols.length}<br>`;
+  html += `• Solution space is a ${freeCols.length}-dimensional subspace of ℝ<sup>${N}</sup><br>`;
+  html += `• Any linear combination of basis vectors is also a solution`;
   html += '</div>';
   
   html += '</div>';
@@ -984,11 +1135,14 @@ function displayVerification(verified) {
   html += '<div style="margin-top:10px; line-height:2">';
   
   if (solutionVectors.length === 0) {
-    html += '<div>✅ <span class="label">Trivial solution:</span> <span style="color:#10b981">x = 0 verified (always true)</span></div>';
+    html += '<div>✅ <span class="label">Trivial solution:</span> <span style="color:#10b981">Verified (always true for homogeneous systems)</span></div>';
   } else {
     solutionVectors.forEach((v, i) => {
-      html += `<div>✅ <span class="label">Basis vector v<sub>${i+1}</sub>:</span> <span style="color:#10b981">Av = 0 verified</span></div>`;
+      html += `<div>✅ <span class="label">Basis vector v<sub>${i+1}</sub>:</span> <span style="color:#10b981">Av = 0 verified ✓</span></div>`;
     });
+    html += '<div style="margin-top:10px; padding:10px; background:#0f0820; border-radius:6px; font-size:12px; color:var(--muted)">';
+    html += '💡 Since each basis vector satisfies Ax = 0, any linear combination also satisfies the equation.';
+    html += '</div>';
   }
   
   html += '</div>';
@@ -1041,7 +1195,7 @@ function preset1(){
   }
   
   resetResults();
-  setNarr('<strong>Preset 1 loaded:</strong> System with 1 free variable (2D solution space).');
+  setNarr('<strong>Preset 1 loaded:</strong> System with 2 free variables → infinite solutions.');
 }
 
 function preset2(){
